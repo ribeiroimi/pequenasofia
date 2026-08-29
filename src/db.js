@@ -6,6 +6,9 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   );
 }
 
+// service_role key: usada só no backend, nunca no frontend.
+// Ela ignora as regras de RLS, então o próprio backend é responsável
+// por só devolver/alterar dados do usuário correto em cada rota.
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
