@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pequena Sofia — Minha conta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Crimson+Pro:ital,wght@0,400;0,500;1,400&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --paper:#FFFDF8; --ink:#1A1A1A;
+  --crayon-yellow:#F5B82E; --crayon-coral:#E8604C; --crayon-teal:#2E9E83; --crayon-sky:#7FB5E0;
+  --soft:#8A877E; --line:#E8E4DA;
+  --display:'Baloo 2',sans-serif; --body:'Crimson Pro',serif; --ui:'Nunito Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:15px}
+.wrap{max-width:900px;margin:0 auto;padding:24px 20px}
+header{border-bottom:2px solid var(--ink);padding:14px 20px;display:flex;align-items:center;gap:20px}
+.logo{font-family:var(--display);font-weight:700;font-size:20px}
+nav{display:flex;gap:6px;margin-left:auto}
+nav button{font-family:var(--ui);font-weight:600;font-size:13px;padding:8px 16px;border:2px solid var(--ink);border-radius:10px;background:#fff;cursor:pointer}
+nav button.on{background:var(--crayon-yellow)}
+.credits-pill{font-family:var(--ui);font-size:13px;font-weight:700;border:2px solid var(--ink);border-radius:99px;padding:5px 14px;background:#fff}
+.credits-pill b{color:var(--crayon-coral)}
+
+.card{border:2px solid var(--ink);border-radius:16px;background:#fff;padding:26px;box-shadow:4px 4px 0 var(--line);margin-bottom:20px}
+.field{margin-bottom:16px}
+.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;font-family:var(--ui);font-size:14px;border:2px solid var(--ink);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.field textarea{min-height:70px;resize:vertical}
+.field .hint{font-size:12px;color:var(--soft);margin-top:4px}
+.btn{font-family:var(--ui);font-weight:700;font-size:14px;border:2px solid var(--ink);border-radius:12px;padding:10px 20px;background:var(--crayon-yellow);cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
+.btn.secondary{background:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.radio-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.radio-card{border:2px solid var(--line);border-radius:10px;padding:10px;text-align:center;cursor:pointer;font-size:12px}
+.radio-card.on{border-color:var(--ink);background:#FFF6DF;box-shadow:2px 2px 0 var(--ink)}
+.radio-card b{display:block;font-size:14px}
+.error-box{font-size:13px;background:#FDECEA;border:2px solid var(--crayon-coral);border-radius:10px;padding:12px 14px;color:#7a2418;margin-top:12px}
+.warn-box{font-size:13px;background:#FFF7E6;border:2px solid var(--crayon-yellow);border-radius:10px;padding:12px 14px;color:#6b4a05;margin-top:12px}
+.progress{height:8px;border:2px solid var(--ink);border-radius:99px;background:#fff;overflow:hidden;margin-top:8px}
+.progress>div{height:100%;width:0;background:repeating-linear-gradient(45deg,var(--crayon-yellow),var(--crayon-yellow) 8px,var(--crayon-coral) 8px,var(--crayon-coral) 16px);transition:width .4s}
+
+.page{background:#fff;border:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:20px}
+.pg-svg img{width:100%;display:block}
+.pg-text{padding:36px 42px;font-family:var(--body);font-size:16px;line-height:1.8}
+.pg-text p{margin-bottom:14px}
+.pg-pais{padding:32px 42px;font-family:var(--body);font-size:14px;color:#444;background:#FBFAF5}
+.hide{display:none !important}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--soft);font-weight:600}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}
+.badge.ativo{background:#E1F5EE;color:#085041}
+.badge.pendente{background:#FFF7E6;color:#6b4a05}
+.badge.cancelado{background:#FDECEA;color:#7a2418}
+</style>
+</head>
+<body>
+
+<!-- ================= TELA DE LOGIN ================= -->
+<div id="loginScreen" class="wrap" style="max-width:420px;padding-top:80px">
+  <div class="card">
+    <div class="logo" style="margin-bottom:6px">Pequena Sofia</div>
+    <p style="color:var(--soft);margin-bottom:20px">Entre com o e-mail da sua assinatura. Vamos te enviar um link de acesso.</p>
+    <div class="field">
+      <label for="loginEmail">E-mail</label>
+      <input type="email" id="loginEmail" placeholder="voce@email.com">
+    </div>
+    <button class="btn" style="width:100%" onclick="enviarMagicLink()">Enviar link de acesso</button>
+    <div id="loginMsg" class="hide" style="margin-top:14px;font-size:13px;color:#0F6E56;background:#E1F5EE;border:2px solid #5DCAA5;border-radius:10px;padding:10px 12px"></div>
+    <div id="loginErr" class="error-box hide"></div>
+    <p style="margin-top:18px;font-size:13px;color:var(--soft)">Ainda não assina? <a href="https://pequenasofia.com#planos" style="color:var(--crayon-coral);font-weight:700">Veja os planos</a></p>
+  </div>
+</div>
+
+<!-- ================= APP LOGADO ================= -->
+<div id="appScreen" class="hide">
+  <header>
+    <span class="logo">Pequena Sofia</span>
+    <nav>
+      <button id="navCriar" class="on" onclick="mostrarTab('criar')">Criar história</button>
+      <button id="navConta" onclick="mostrarTab('conta')">Minha conta</button>
+    </nav>
+    <span class="credits-pill">✏️ <b id="creditPillNum">–</b> créditos</span>
+    <button class="btn secondary" style="padding:6px 14px;font-size:12px" onclick="sair()">Sair</button>
+  </header>
+
+  <div class="wrap">
+
+    <!-- ---------- TAB: CRIAR HISTÓRIA ---------- -->
+    <div id="tabCriar">
+      <div class="card">
+        <div class="field"><label>Nome da criança ou do personagem principal</label><input id="fNome" placeholder="ex: Helena"></div>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
+          <div class="field"><label>Idade</label>
+            <select id="fIdade"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+          </div>
+          <div class="field"><label>Mundo favorito</label><input id="fTema" placeholder="ex: fundo do mar, dinossauros, espaço"></div>
+        </div>
+        <div class="field"><label>O que você gostaria de conversar com ele(a)?</label><textarea id="fLicao" placeholder="ex: aprender a dividir os brinquedos"></textarea></div>
+        <div class="field"><label>Tamanho da história</label>
+          <div class="radio-row" id="sizeRow">
+            <label class="radio-card on" data-v="curta"><b>Curta</b>1 crédito</label>
+            <label class="radio-card" data-v="media"><b>Média</b>2 créditos</label>
+            <label class="radio-card" data-v="longa"><b>Longa</b>3 créditos</label>
+          </div>
+        </div>
+        <div class="field"><label>Como é a criança ou o personagem principal? <span style="font-weight:400;color:var(--soft)">(opcional)</span></label><input id="fAparencia" placeholder="ex: cabelo cacheado castanho, olhos verdes"></div>
+        <div class="field"><label>Alguma característica que devemos considerar? <span style="font-weight:400;color:var(--soft)">(opcional)</span></label><input id="fPerfil" placeholder="ex: TDAH, autismo, ansiedade, dislexia"></div>
+
+        <button class="btn" id="btnGerar" style="width:100%" onclick="gerar()">✏️ Criar história</button>
+
+        <div id="genArea" class="hide">
+          <div id="genStatus" style="font-size:13px;margin-top:10px"></div>
+          <div class="progress"><div id="genBar"></div></div>
+        </div>
+        <div id="errBox" class="error-box hide"></div>
+        <div id="warnBox" class="warn-box hide"></div>
+      </div>
+
+      <div id="bookArea" class="hide">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <span id="bookMeta" style="font-size:13px;color:var(--soft)"></span>
+          <button class="btn secondary" style="padding:7px 16px;font-size:12px" onclick="gerarPDF()">⬇️ Baixar PDF</button>
+        </div>
+        <div id="bookPages"></div>
+      </div>
+    </div>
+
+    <!-- ---------- TAB: MINHA CONTA ---------- -->
+    <div id="tabConta" class="hide">
+      <div class="card">
+        <h3 style="font-family:var(--display);margin-bottom:14px">Dados cadastrais</h3>
+        <div class="field"><label>Nome</label><input id="ctNome"></div>
+        <div class="field"><label>E-mail (login)</label><input id="ctEmail" disabled></div>
+        <div class="field"><label>Telefone</label><input id="ctTelefone"></div>
+        <button class="btn" onclick="salvarConta()">Salvar alterações</button>
+        <span id="ctSalvoMsg" class="hide" style="margin-left:10px;color:#0F6E56;font-size:13px;font-weight:600">✓ Salvo</span>
+      </div>
+
+      <div class="card">
+        <h3 style="font-family:var(--display);margin-bottom:14px">Plano e créditos</h3>
+        <p style="margin-bottom:6px">Plano atual: <b id="ctPlano">–</b> <span id="ctStatusBadge"></span></p>
+        <p style="margin-bottom:14px">Saldo de créditos: <b id="ctSaldo">–</b></p>
+        <div style="display:flex;gap:10px">
+          <button class="btn secondary" onclick="upgrade('pensador')">Upgrade para Pensador</button>
+          <button class="btn secondary" onclick="upgrade('filosofo')">Upgrade para Filósofo</button>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+          <button class="btn secondary" style="border-color:var(--crayon-coral);color:var(--crayon-coral)" onclick="cancelarConta()">Cancelar assinatura</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-family:var(--display);margin-bottom:14px">Extrato de créditos (últimos 3 meses)</h3>
+        <table>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Quantidade</th><th>Saldo após</th><th>Referência</th></tr></thead>
+          <tbody id="extratoBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   CONFIGURAÇÃO — troque pelos valores reais depois do deploy
+   ====================================================================== */
+const API_BASE = 'https://SEU-BACKEND.up.railway.app'; // <-- ajuste aqui
+const SUPABASE_URL = 'https://uqvtxlpyazuswdrhtuoo.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_TV-qy-Bz-5ZIo0jJrA2r_Q_C1fq0vQd'; // publishable key — segura para o frontend
+
+/* ======================================================================
+   AUTENTICAÇÃO — via SDK oficial do Supabase
+   O SDK guarda access_token + refresh_token no localStorage e RENOVA a
+   sessão sozinho antes de expirar — resolve o logout silencioso após 1h.
+   Ele também detecta o token na URL ao voltar do magic link
+   (detectSessionInUrl), então não precisamos mais parsear o hash na mão.
+   ====================================================================== */
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// getSession() devolve a sessão atual e, se o access_token estiver
+// expirado, renova automaticamente usando o refresh_token antes de
+// responder — por isso buscamos o token a CADA chamada de api(), nunca
+// guardamos uma cópia própria.
+async function getAccessToken(){
+  const { data: { session } } = await sb.auth.getSession();
+  return session ? session.access_token : null;
+}
+
+async function api(path, opts = {}){
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+  const token = await getAccessToken();
+  if(token) headers['Authorization'] = 'Bearer ' + token;
+  const res = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw Object.assign(new Error(data.erro || 'Erro na requisição'), { status: res.status, data });
+  return data;
+}
+
+// O pedido do magic link continua passando pelo NOSSO backend
+// (/auth/login), que tem rate limit e não revela se o e-mail existe.
+async function enviarMagicLink(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const msg = document.getElementById('loginMsg');
+  const err = document.getElementById('loginErr');
+  msg.classList.add('hide'); err.classList.add('hide');
+  if(!email){ err.textContent = 'Informe seu e-mail.'; err.classList.remove('hide'); return; }
+  try{
+    const r = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email }) });
+    msg.textContent = r.mensagem || r.aviso || 'Verifique seu e-mail.';
+    msg.classList.remove('hide');
+  }catch(e){
+    err.textContent = e.message;
+    err.classList.remove('hide');
+  }
+}
+
+async function sair(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+/* ======================================================================
+   INICIALIZAÇÃO
+   ====================================================================== */
+let perfilAtual = null;
+
+async function init(){
+  // migração: remove o token do esquema antigo, se existir
+  localStorage.removeItem('ps_token');
+
+  // getSession() aguarda o SDK processar o hash da URL do magic link
+  // (se houver) e devolve a sessão persistida/renovada.
+  const token = await getAccessToken();
+  if(window.location.hash.includes('access_token')){
+    history.replaceState(null, '', window.location.pathname); // limpa a URL
+  }
+  if(!token){
+    document.getElementById('loginScreen').classList.remove('hide');
+    document.getElementById('appScreen').classList.add('hide');
+    return;
+  }
+  try{
+    perfilAtual = await api('/me');
+    document.getElementById('loginScreen').classList.add('hide');
+    document.getElementById('appScreen').classList.remove('hide');
+    preencherConta();
+  }catch(e){
+    await sb.auth.signOut().catch(() => {});
+    document.getElementById('loginScreen').classList.remove('hide');
+    document.getElementById('appScreen').classList.add('hide');
+  }
+}
+
+function preencherConta(){
+  document.getElementById('creditPillNum').textContent = perfilAtual.saldo_creditos;
+  document.getElementById('ctNome').value = perfilAtual.nome || '';
+  document.getElementById('ctEmail').value = perfilAtual.email || '';
+  document.getElementById('ctTelefone').value = perfilAtual.telefone || '';
+  document.getElementById('ctPlano').textContent = perfilAtual.plano_label || perfilAtual.plano_atual;
+  document.getElementById('ctSaldo').textContent = perfilAtual.saldo_creditos;
+  const statusMap = { ativo: 'ativo', pagamento_pendente: 'pendente', cancelado: 'cancelado' };
+  const cls = statusMap[perfilAtual.status] || 'ativo';
+  document.getElementById('ctStatusBadge').innerHTML = '<span class="badge ' + cls + '">' + perfilAtual.status + '</span>';
+}
+
+function mostrarTab(nome){
+  document.getElementById('navCriar').classList.toggle('on', nome === 'criar');
+  document.getElementById('navConta').classList.toggle('on', nome === 'conta');
+  document.getElementById('tabCriar').classList.toggle('hide', nome !== 'criar');
+  document.getElementById('tabConta').classList.toggle('hide', nome !== 'conta');
+  if(nome === 'conta') carregarExtrato();
+}
+
+document.querySelectorAll('#sizeRow .radio-card').forEach(c => {
+  c.addEventListener('click', () => {
+    document.querySelectorAll('#sizeRow .radio-card').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+  });
+});
+
+/* ======================================================================
+   CONTA — salvar, upgrade, cancelar, extrato
+   ====================================================================== */
+async function salvarConta(){
+  const nome = document.getElementById('ctNome').value.trim();
+  const telefone = document.getElementById('ctTelefone').value.trim();
+  try{
+    await api('/me', { method: 'PUT', body: JSON.stringify({ nome, telefone }) });
+    const msg = document.getElementById('ctSalvoMsg');
+    msg.classList.remove('hide');
+    setTimeout(() => msg.classList.add('hide'), 2500);
+  }catch(e){ alert('Erro ao salvar: ' + e.message); }
+}
+
+async function upgrade(plano){
+  try{
+    const r = await api('/me/upgrade', { method: 'POST', body: JSON.stringify({ plano }) });
+    if(r.redirecionar_para){
+      alert(r.aviso || '');
+      window.location.href = r.redirecionar_para;
+    }
+  }catch(e){ alert('Erro: ' + e.message); }
+}
+
+async function cancelarConta(){
+  if(!confirm('Tem certeza que deseja cancelar sua assinatura? Você mantém acesso até o fim do ciclo já pago.')) return;
+  try{
+    const r = await api('/me/cancelar', { method: 'POST' });
+    alert(r.mensagem);
+  }catch(e){ alert('Erro: ' + e.message); }
+}
+
+async function carregarExtrato(){
+  try{
+    const r = await api('/me/extrato?meses=3');
+    const tbody = document.getElementById('extratoBody');
+    tbody.innerHTML = r.extrato.map(linha => {
+      const data = new Date(linha.criado_em).toLocaleDateString('pt-BR');
+      const sinal = linha.quantidade > 0 ? '+' : '';
+      // esc() em tudo que vem do banco — 'referencia' carrega texto de
+      // ajustes manuais e de payloads externos; sem escapar, é XSS.
+      return '<tr><td>' + data + '</td><td>' + esc(linha.tipo) + '</td><td>' + sinal + Number(linha.quantidade) +
+        '</td><td>' + Number(linha.saldo_apos) + '</td><td>' + esc(linha.referencia || '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" style="color:var(--soft)">Nenhuma movimentação ainda.</td></tr>';
+  }catch(e){ console.error(e); }
+}
+
+/* ======================================================================
+   GERAÇÃO DE HISTÓRIA — chama o backend em vez das APIs de IA direto
+   ====================================================================== */
+const TYPE_LABEL = { capa:'Capa', pagina_inteira:'Página inteira', meia_pagina:'Meia página', vinheta:'Vinheta' };
+let bookData = null;
+let currentHistoriaId = null;
+
+async function toGrayscale(url){
+  try{
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const bmp = await createImageBitmap(blob);
+    const cv = document.createElement('canvas');
+    cv.width = bmp.width; cv.height = bmp.height;
+    const ctx = cv.getContext('2d');
+    if('filter' in ctx){
+      ctx.filter = 'grayscale(1) contrast(1.15)';
+      ctx.drawImage(bmp, 0, 0);
+    } else {
+      ctx.drawImage(bmp, 0, 0);
+      const id = ctx.getImageData(0, 0, cv.width, cv.height);
+      const d = id.data;
+      for(let i = 0; i < d.length; i += 4){
+        const g = Math.min(255, (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114) * 1.15);
+        d[i] = d[i+1] = d[i+2] = g;
+      }
+      ctx.putImageData(id, 0, 0);
+    }
+    bmp.close();
+    return cv.toDataURL('image/jpeg', 0.92);
+  }catch(e){ return url; }
+}
+
+async function gerarUmaIlustracao(historiaId, cena, aparencia, refImageUrl){
+  for(let attempt = 0; attempt < 3; attempt++){
+    try{
+      const r = await api('/historias/' + historiaId + '/ilustracao', {
+        method: 'POST',
+        body: JSON.stringify({ cena, aparencia, refImageUrl }),
+      });
+      const b64 = await toGrayscale(r.url);
+      return { b64, url: r.url };
+    }catch(e){
+      if(attempt < 2) await new Promise(r => setTimeout(r, [2000,5000][attempt]));
+    }
+  }
+  return null;
+}
+
+async function poolRun(items, worker, concurrency, onEach){
+  const queue = [...items];
+  async function lane(){
+    while(queue.length){
+      const item = queue.shift();
+      const r = await worker(item);
+      if(onEach) onEach(item, r);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, lane));
+}
+
+async function gerar(){
+  const nome = document.getElementById('fNome').value.trim();
+  const idade = document.getElementById('fIdade').value;
+  const tema = document.getElementById('fTema').value.trim();
+  const licao = document.getElementById('fLicao').value.trim();
+  const aparencia = document.getElementById('fAparencia').value.trim();
+  const perfil = document.getElementById('fPerfil').value.trim();
+  const tamanho = document.querySelector('#sizeRow .radio-card.on').dataset.v;
+
+  const err = document.getElementById('errBox');
+  const warn = document.getElementById('warnBox');
+  err.classList.add('hide'); warn.classList.add('hide');
+
+  if(!nome || !tema || !licao){
+    err.textContent = 'Preencha o nome, o mundo favorito e o que gostaria de conversar.';
+    err.classList.remove('hide'); return;
+  }
+
+  const btn = document.getElementById('btnGerar');
+  const genArea = document.getElementById('genArea');
+  const status = document.getElementById('genStatus');
+  const bar = document.getElementById('genBar');
+  btn.disabled = true; genArea.classList.remove('hide');
+  status.textContent = '✍️ Escrevendo a história de ' + nome + '… (até 30s)';
+  bar.style.width = '6%';
+
+  try{
+    const r1 = await api('/historias/fase1', {
+      method: 'POST',
+      body: JSON.stringify({ nome, idade, tema, licao, tamanho, aparencia, perfil }),
+    });
+    currentHistoriaId = r1.historia_id;
+    bookData = r1.dados;
+    bookData.svgs = {};
+
+    // atualiza créditos na tela
+    perfilAtual.saldo_creditos -= r1.custo;
+    document.getElementById('creditPillNum').textContent = perfilAtual.saldo_creditos;
+
+    renderBook(bookData, tamanho, r1.custo);
+    bar.style.width = '20%';
+
+    const plano = bookData.plano_ilustracoes;
+    let feitos = 0;
+    const tick = () => {
+      status.textContent = '🎨 Desenhando ilustrações… ' + feitos + '/' + plano.length + ' (3 em paralelo)';
+      bar.style.width = (20 + (feitos/plano.length)*80) + '%';
+    };
+
+    const capaCena = plano.find(il => il.tipo === 'capa');
+    const demais = plano.filter(il => il.tipo !== 'capa');
+    let refImageUrl = null;
+
+    if(capaCena){
+      status.textContent = '🎨 Desenhando a capa (referência do personagem)…';
+      const r = await gerarUmaIlustracao(currentHistoriaId, capaCena, aparencia, null);
+      if(r){ bookData.svgs[capaCena.numero] = r.b64; refImageUrl = r.url; feitos++; updatePages(bookData); }
+      tick();
+    }
+
+    await poolRun(demais, cena => gerarUmaIlustracao(currentHistoriaId, cena, aparencia, refImageUrl), 3, (cena, r) => {
+      if(r){ bookData.svgs[cena.numero] = r.b64; feitos++; updatePages(bookData); }
+      tick();
+    });
+
+    if(feitos === 0){
+      warn.innerHTML = '⚠️ Nenhuma ilustração pôde ser gerada. A história está completa abaixo mesmo assim.';
+      warn.classList.remove('hide');
+    } else if(feitos < plano.length){
+      warn.innerHTML = '⚠️ ' + (plano.length - feitos) + ' ilustração(ões) não foram geradas. A história está completa abaixo.';
+      warn.classList.remove('hide');
+    }
+
+    status.textContent = '✅ Livro pronto! Role para baixo — e quando quiser, baixe o PDF.';
+    bar.style.width = '100%';
+
+  }catch(e){
+    if(e.data?.creditos_devolvidos){
+      perfilAtual.saldo_creditos += e.data.creditos_devolvidos;
+      document.getElementById('creditPillNum').textContent = perfilAtual.saldo_creditos;
+      err.innerHTML = '<b>' + e.message + '</b><br><span style="color:#0F6E56;font-weight:600">✓ Seus ' +
+        e.data.creditos_devolvidos + ' crédito(s) foram devolvidos.</span>';
+    } else {
+      err.textContent = e.message;
+    }
+    err.classList.remove('hide');
+    genArea.classList.add('hide');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function renderBook(data, tamanho, custo){
+  document.getElementById('bookArea').classList.remove('hide');
+  document.getElementById('bookMeta').textContent =
+    data.cabecalho.titulo + ' · ' + data.cabecalho.filosofo + ' · custou ' + custo + ' crédito' + (custo>1?'s':'');
+
+  const paras = data.historia.split('\n\n').filter(Boolean);
+  const ils = [...data.plano_ilustracoes].sort((a,b) => a.tipo==='capa' ? -1 : b.tipo==='capa' ? 1 : a.numero-b.numero);
+  const slots = Math.max(1, ils.length - 1);
+  const porSlot = Math.ceil(paras.length / slots);
+
+  let html = ''; let pIdx = 0;
+  ils.forEach((il, i) => {
+    html += '<div class="page" data-num="' + il.numero + '"><div class="pg-svg"><div style="padding:60px;text-align:center;color:#ccc">desenhando…</div></div>';
+    if(il.tipo !== 'capa'){
+      const chunk = paras.slice(pIdx, pIdx + porSlot); pIdx += porSlot;
+      if(chunk.length) html += '<div class="pg-text">' + chunk.map(p => '<p>' + esc(p) + '</p>').join('') + '</div>';
+    }
+    html += '</div>';
+  });
+  if(pIdx < paras.length) html += '<div class="page"><div class="pg-text">' + paras.slice(pIdx).map(p => '<p>' + esc(p) + '</p>').join('') + '</div></div>';
+  html += '<div class="page"><div class="pg-pais"><h4>🔍 Para os pais</h4><p style="margin-top:8px">' + esc(data.nota_pais) + '</p></div></div>';
+  document.getElementById('bookPages').innerHTML = html;
+}
+
+function updatePages(data){
+  document.querySelectorAll('#bookPages .page[data-num]').forEach(pg => {
+    const n = parseInt(pg.dataset.num);
+    if(data.svgs[n]){
+      const slot = pg.querySelector('.pg-svg');
+      if(slot && slot.querySelector('div')){
+        slot.innerHTML = '<img src="' + data.svgs[n] + '">';
+      }
+    }
+  });
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ======================================================================
+   PDF — mesma lógica programática (jsPDF) validada no protótipo
+   ====================================================================== */
+async function gerarPDF(){
+  if(!bookData) return;
+  try{
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, H = 297, M = 18;
+    const ils = [...bookData.plano_ilustracoes].sort((a,b) => a.tipo==='capa' ? -1 : b.tipo==='capa' ? 1 : a.numero-b.numero);
+    const paras = bookData.historia.split('\n\n').filter(Boolean);
+    const slots = Math.max(1, ils.length - 1);
+    const porSlot = Math.ceil(paras.length / slots);
+
+    const footer = () => {
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(7.5); pdf.setTextColor(175,175,175);
+      pdf.text('Pequena Sofia — Histórias para colorir, escritas por grandes ideias', W/2, H-8, { align:'center' });
+    };
+    const addImg = (b64, topY, maxH) => {
+      try{
+        const props = pdf.getImageProperties(b64);
+        let w = W - 2*M, h = w * props.height / props.width;
+        if(h > maxH){ h = maxH; w = h * props.width / props.height; }
+        pdf.addImage(b64, 'JPEG', (W-w)/2, topY, w, h);
+        return topY + h;
+      }catch(e){ return topY; }
+    };
+    const writeParas = (list, startY) => {
+      let y = startY;
+      pdf.setFont('times','normal'); pdf.setFontSize(11.5); pdf.setTextColor(28,28,28);
+      for(const p of list){
+        const lines = pdf.splitTextToSize(p, W - 2*M);
+        const need = lines.length * 6.6 + 4;
+        if(y + need > H - 20){ footer(); pdf.addPage(); y = M + 2; pdf.setFont('times','normal'); pdf.setFontSize(11.5); pdf.setTextColor(28,28,28); }
+        pdf.text(lines, M, y + 5, { lineHeightFactor: 1.6 });
+        y += need;
+      }
+      return y;
+    };
+
+    let pIdx = 0;
+    for(let i = 0; i < ils.length; i++){
+      const il = ils[i];
+      const b64 = bookData.svgs[il.numero];
+      if(i > 0) pdf.addPage();
+      if(il.tipo === 'capa'){
+        let y = M;
+        if(b64) y = addImg(b64, M, H - 100);
+        const bandY = Math.min(Math.max(y + 8, H - 78), H - 60);
+        pdf.setDrawColor(26,26,26); pdf.setLineWidth(0.9); pdf.line(M, bandY, W-M, bandY);
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(10.5); pdf.setTextColor(216,90,48);
+        pdf.text('P E Q U E N A   S O F I A', W/2, bandY+12, { align:'center' });
+        pdf.setFontSize(21); pdf.setTextColor(20,20,20);
+        pdf.text(pdf.splitTextToSize(bookData.cabecalho.titulo, W-2*M), W/2, bandY+24, { align:'center' });
+        continue;
+      }
+      let y = M;
+      if(b64){
+        const maxImgH = il.tipo==='vinheta' ? 85 : il.tipo==='meia_pagina' ? 105 : 145;
+        y = addImg(b64, M, maxImgH) + 9;
+      }
+      const chunk = paras.slice(pIdx, pIdx + porSlot); pIdx += porSlot;
+      writeParas(chunk, y);
+      footer();
+    }
+    if(pIdx < paras.length){ pdf.addPage(); writeParas(paras.slice(pIdx), M+2); footer(); }
+
+    pdf.addPage();
+    let y = M + 6;
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(20,20,20);
+    pdf.text('Para os pais — a filosofia desta história', M, y); y += 11;
+    pdf.setFont('times','normal'); pdf.setFontSize(11); pdf.setTextColor(45,45,45);
+    for(const seg of pdf.splitTextToSize(bookData.nota_pais, W-2*M)){
+      if(y > H-22){ footer(); pdf.addPage(); y = M+2; pdf.setFont('times','normal'); pdf.setFontSize(11); pdf.setTextColor(45,45,45); }
+      pdf.text(seg, M, y); y += 6.4;
+    }
+    footer();
+
+    const fname = bookData.cabecalho.titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'') + '.pdf';
+    pdf.save(fname);
+  }catch(err){ alert('Erro ao gerar PDF: ' + err.message); }
+}
+
+init();
+</script>
+</body>
+</html>
