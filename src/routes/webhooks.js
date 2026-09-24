@@ -3,7 +3,17 @@ const crypto = require('crypto');
 const router = express.Router();
 const { supabase } = require('../db');
 const { PLANOS, planoValido } = require('../lib/planos');
-const { enviarAlertaAdmin } = require('../lib/alertas');
+const { enviarAlertaAdmin, enviarCredenciaisCliente } = require('../lib/alertas');
+
+// Gera uma senha aleatoria e legivel para novas contas criadas pelo webhook.
+function gerarSenhaAleatoria() {
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let senha = '';
+  for (let i = 0; i < 12; i++) {
+    senha += alfabeto[Math.floor(Math.random() * alfabeto.length)];
+  }
+  return senha;
+}
 
 // Mapeia o nome da oferta configurada na Cakto para o nosso identificador
 // interno de plano. AJUSTE os textos à esquerda para bater exatamente
@@ -108,11 +118,13 @@ router.post('/cakto', async (req, res) => {
         let usuario = await buscarUsuarioPorEmail(email);
 
         if (!usuario) {
-          // Cria também o usuário no Supabase Auth, para que ele consiga
-          // logar depois via magic link com este mesmo e-mail.
-          const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+          // Cria tambem o usuario no Supabase Auth, com uma senha gerada
+          // automaticamente. As credenciais sao enviadas por e-mail abaixo.
+          const senhaGerada = gerarSenhaAleatoria();
+      const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
             email,
-            email_confirm: true,
+            password: senhaGerada,
+          email_confirm: true,
           });
           if (authErr) throw authErr;
 
@@ -135,6 +147,7 @@ router.post('/cakto', async (req, res) => {
             .single();
           if (insErr) throw insErr;
           usuario = novoUsuario;
+      await enviarCredenciaisCliente({ email, nome, senha: senhaGerada }).catch((e) => console.error('[credenciais cliente] erro:', e.message));
         }
 
         await creditarOuFalhar(usuario.id, PLANOS.curioso.creditos_mes, 'credito_mensal',
