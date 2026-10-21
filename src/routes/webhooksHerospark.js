@@ -144,6 +144,7 @@ async function pagamentoConfirmado(p, email) {
       throw insErr;
     }
     usuario = novo;
+    await guardarAssinatura(usuario.id, p.subscription_id);
 
     await creditarOuFalhar(usuario.id, PLANOS[plano].creditos_mes, 'credito_mensal',
       'assinatura criada — ' + p.payment_id);
@@ -154,6 +155,8 @@ async function pagamentoConfirmado(p, email) {
 
   // Cliente existente: renovação mensal ou troca de plano. Os créditos são
   // somados ao saldo atual, nunca substituídos.
+  await alertarSeAssinaturaDuplicada(usuario, plano, p, email);
+
   await creditarOuFalhar(usuario.id, PLANOS[plano].creditos_mes, 'credito_mensal',
     (plano !== usuario.plano_atual ? 'troca de plano — ' : 'renovação — ') + p.payment_id);
 
@@ -164,7 +167,56 @@ async function pagamentoConfirmado(p, email) {
   }
   const { error } = await supabase.from('usuarios').update(patch).eq('id', usuario.id);
   if (error) throw error;
+  await guardarAssinatura(usuario.id, p.subscription_id);
   return { conta: 'atualizada', plano };
+}
+
+// Guarda o id da assinatura vigente do cliente. É "melhor esforço": se a
+// coluna ainda não existir no banco (SQL de migração não rodado), só registra
+// no log e NÃO derruba a compra.
+async function guardarAssinatura(usuarioId, subscriptionId) {
+  if (!subscriptionId) return;
+  const { error } = await supabase
+    .from('usuarios')
+    .update({ herospark_subscription_id: String(subscriptionId) })
+    .eq('id', usuarioId);
+  if (error) console.error('[webhook herospark] não foi possível guardar subscription_id:', error.message);
+}
+
+// Upgrade pelo app = compra nova no HeroSpark = assinatura NOVA, e a antiga
+// continua cobrando até alguém cancelar. Quando chega um pagamento de uma
+// assinatura diferente da guardada, avisa o admin qual cancelar.
+// Não alerta se a conta estava cancelada (recompra legítima).
+async function alertarSeAssinaturaDuplicada(usuario, planoNovo, p, email) {
+  const nova = p.subscription_id ? String(p.subscription_id) : null;
+  const antiga = usuario.herospark_subscription_id || null;
+  if (!nova || usuario.status === 'cancelado') return;
+
+  const idDiferente = antiga && antiga !== nova;
+  const trocouSemHistorico = !antiga && planoNovo !== usuario.plano_atual;
+  if (!idDiferente && !trocouSemHistorico) return;
+
+  await enviarAlertaAdmin({
+    assunto: 'Assinatura duplicada — cancele a antiga no HeroSpark',
+    corpo:
+      'O cliente ' + email + ' pagou uma assinatura nova e pode ter outra ainda ativa.\n\n' +
+      'Plano anterior: ' + usuario.plano_atual + '\n' +
+      'Plano novo: ' + planoNovo + ' (oferta ' + p.offer_id + ' — ' + p.offer_title + ')\n' +
+      'Assinatura NOVA (manter): ' + nova + '\n' +
+      'Assinatura ANTIGA (cancelar): ' + (antiga || 'desconhecida — procure pelo e-mail em Vendas/Membros') + '\n\n' +
+      'Onde cancelar: HeroSpark → Vendas → procure o e-mail do cliente → cancelar a assinatura antiga.\n' +
+      'Os créditos do plano novo já foram somados ao saldo. Quando a antiga for cancelada, o evento ' +
+      'de cancelamento dela será ignorado automaticamente e a conta continua ativa.',
+  });
+}
+
+// Eventos de atraso/cancelamento de uma assinatura DIFERENTE da vigente
+// (ex.: a antiga, depois do upgrade) não devem mexer na conta.
+async function assinaturaEhVigente(email, subscriptionId) {
+  if (!subscriptionId) return true;
+  const u = await buscarUsuarioPorEmail(email);
+  if (!u || !u.herospark_subscription_id) return true;
+  return u.herospark_subscription_id === String(subscriptionId);
 }
 
 // POST /api/webhooks/herospark  (e /webhooks/herospark)
@@ -208,6 +260,11 @@ router.post('/', async (req, res) => {
       case 'subscription_overdue': {
         // só marca pendência de quem está ativo; não mexe em suspenso/cancelado.
         // Créditos existentes ficam intactos.
+        if (!(await assinaturaEhVigente(email, p.subscription_id))) {
+          console.log('[webhook herospark] atraso de assinatura antiga ignorado:', email, p.subscription_id);
+          resultado = { ignorado: 'assinatura_nao_vigente' };
+          break;
+        }
         await supabase
           .from('usuarios')
           .update({ status: 'pagamento_pendente', atualizado_em: new Date().toISOString() })
@@ -219,6 +276,12 @@ router.post('/', async (req, res) => {
       case 'subscription_canceled_by_customer':
       case 'subscription_canceled_by_system_or_producer': {
         // créditos existentes NÃO são removidos. Conta suspensa continua suspensa.
+        // Cancelamento da assinatura ANTIGA (depois de um upgrade) não derruba a conta.
+        if (!(await assinaturaEhVigente(email, p.subscription_id))) {
+          console.log('[webhook herospark] cancelamento de assinatura antiga ignorado:', email, p.subscription_id);
+          resultado = { ignorado: 'assinatura_nao_vigente' };
+          break;
+        }
         await supabase
           .from('usuarios')
           .update({ status: 'cancelado', atualizado_em: new Date().toISOString() })
