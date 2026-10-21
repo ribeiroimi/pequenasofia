@@ -202,3 +202,12 @@ begin
   return v;
 end;
 $$ language plpgsql set search_path = public;
+
+-- ========================================================
+-- HEROSPARK — id da assinatura vigente do cliente
+-- (rode este bloco no SQL Editor do Supabase ANTES de subir o código novo;
+-- se não rodar, o webhook continua funcionando, mas o alerta de assinatura
+-- duplicada e a proteção contra cancelamento da assinatura antiga ficam inativos)
+-- ========================================================
+alter table public.usuarios
+  add column if not exists herospark_subscription_id text;

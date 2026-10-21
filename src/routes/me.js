@@ -49,10 +49,11 @@ router.put('/', async (req, res) => {
 
 // POST /me/upgrade  { plano: 'pensador' | 'filosofo' }
 // IMPORTANTE: este endpoint só atualiza o registro local depois que o
-// pagamento do novo plano for confirmado via webhook da Cakto. Aqui ele
+// pagamento do novo plano for confirmado via webhook do HeroSpark. Aqui ele
 // apenas devolve para o frontend a URL de checkout para onde redirecionar
-// o usuário — a troca de fato acontece quando o webhook subscription_renewed
-// (ou equivalente) chegar.
+// o usuário — a troca de fato acontece quando o webhook payment_confirmed
+// da nova oferta chegar. ATENÇÃO: a compra cria uma assinatura NOVA no HeroSpark;
+// a assinatura do plano antigo precisa ser cancelada para não cobrar em dobro.
 // Os links vêm do .env (CHECKOUT_URL_PENSADOR / CHECKOUT_URL_FILOSOFO) —
 // nada de URL de ambiente hardcoded no código.
 function linksCheckout() {
@@ -80,9 +81,9 @@ router.post('/upgrade', async (req, res) => {
 });
 
 // POST /me/cancelar — marca intenção; o cancelamento efetivo do lado da
-// Cakto deve ser feito pelo usuário no e-mail de gestão de assinatura que
-// a Cakto envia, OU via chamada à API da Cakto se/quando disponibilizada
-// para cancelamento programático. Aqui registramos a intenção no backoffice.
+// HeroSpark é feito pelo cliente na área de assinaturas do HeroSpark (ou por
+// você, no painel). Quando isso acontece, o webhook subscription_canceled_*
+// atualiza o status aqui. Aqui registramos a intenção no backoffice.
 router.post('/cancelar', async (req, res) => {
   const { error } = await supabase
     .from('usuarios')

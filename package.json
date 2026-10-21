@@ -1,7 +1,7 @@
 {
   "name": "pequena-sofia-backend",
   "version": "1.0.0",
-  "description": "Backend da Pequena Sofia — API, webhooks Cakto, geração de histórias",
+  "description": "Backend da Pequena Sofia — API, webhooks HeroSpark/Cakto, geração de histórias",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

@@ -13,6 +13,7 @@ const authRoutes = require('./src/routes/auth');
 const meRoutes = require('./src/routes/me');
 const historiasRoutes = require('./src/routes/historias');
 const webhooksRoutes = require('./src/routes/webhooks');
+const webhooksHerosparkRoutes = require('./src/routes/webhooksHerospark');
 const adminRoutes = require('./src/routes/admin');
 
 const app = express();
@@ -77,6 +78,9 @@ app.get('/', (req, res) => res.redirect('/app.html'));
 app.use('/auth', authRoutes);
 app.use('/me', meRoutes);
 app.use('/historias', historiasRoutes);
+// HeroSpark: a URL configurada nas automações é /api/webhooks/herospark.
+app.use('/api/webhooks/herospark', webhooksHerosparkRoutes);
+app.use('/webhooks/herospark', webhooksHerosparkRoutes);
 app.use('/webhooks', webhooksRoutes);
 app.use('/admin', adminRoutes);
 

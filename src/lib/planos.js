@@ -2,9 +2,10 @@
 // Se um dia os preços ou créditos mudarem, é só editar aqui.
 
 const PLANOS = {
-  curioso:  { label: 'Curioso',  creditos_mes: 3, preco: 12.00 },
-  pensador: { label: 'Pensador', creditos_mes: 6, preco: 21.00 },
-  filosofo: { label: 'Filósofo', creditos_mes: 9, preco: 29.00 },
+  // preco = valor no cartão; no Pix Automático o HeroSpark aplica 10% de desconto.
+  curioso:  { label: 'Curioso',  creditos_mes: 3, preco: 14.00 },
+  pensador: { label: 'Pensador', creditos_mes: 6, preco: 24.90 },
+  filosofo: { label: 'Filósofo', creditos_mes: 9, preco: 33.90 },
 };
 
 const CUSTO_HISTORIA = {
